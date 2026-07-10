@@ -1,0 +1,64 @@
+name: ExpenseFlow CI
+
+# Triggers on every push and pull request to master
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    # Spin up PostgreSQL as a service for integration tests
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: expenseflow
+          POSTGRES_USER: expenseuser
+          POSTGRES_PASSWORD: expensepass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # 1. Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up Java 21
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 3. Cache Maven dependencies
+      # Avoids re-downloading on every run — makes CI significantly faster
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      # 4. Make mvnw executable
+      - name: Make mvnw executable
+        run: chmod +x mvnw
+
+      # 5. Build and test
+      - name: Build with Maven
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/expenseflow
+          SPRING_DATASOURCE_USERNAME: expenseuser
+          SPRING_DATASOURCE_PASSWORD: expensepass
+          JWT_SECRET: expenseflow-super-secret-key-for-jwt-signing-2024
+          JWT_EXPIRATION: 86400000
+        run: ./mvnw clean install -B

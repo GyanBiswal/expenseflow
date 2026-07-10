@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:16
+    container_name: expenseflow-postgres
+    environment:
+      POSTGRES_DB: expenseflow
+      POSTGRES_USER: expenseuser
+      POSTGRES_PASSWORD: expensepass
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persists data even when container restarts
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U expenseuser -d expenseflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ExpenseFlow Spring Boot app
+  app:
+    build: .
+    container_name: expenseflow-app
+    ports:
+      - "8080:8080"
+    environment:
+      # Override application.properties values for the container environment
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/expenseflow
+      SPRING_DATASOURCE_USERNAME: expenseuser
+      SPRING_DATASOURCE_PASSWORD: expensepass
+      JWT_SECRET: expenseflow-super-secret-key-for-jwt-signing-2024
+      JWT_EXPIRATION: 86400000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
