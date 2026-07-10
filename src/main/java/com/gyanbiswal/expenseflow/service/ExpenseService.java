@@ -11,6 +11,9 @@ import com.gyanbiswal.expenseflow.repository.ExpenseRepository;
 import com.gyanbiswal.expenseflow.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -122,5 +125,22 @@ public class ExpenseService {
                 .categoryName(expense.getCategory().getName())
                 .budgetExceeded(exceeded)
                 .build();
+    }
+
+    public Page<ExpenseResponse> getAllExpensesPaginated(
+            Pageable pageable) {
+
+        User currentUser = securityUtils.getCurrentUser();
+
+        Page<Expense> expensePage = expenseRepository
+                .findByUser(currentUser, pageable);
+
+        List<ExpenseResponse> responses = expensePage.getContent()
+                .stream()
+                .map(e -> toResponse(e, currentUser))
+                .toList();
+
+        // Wrap back into a Page so the response includes pagination metadata
+        return new PageImpl<>(responses, pageable, expensePage.getTotalElements());
     }
 }

@@ -31,9 +31,15 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints — no token required
+                        // Public endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        // Everything else requires a valid JWT
+                        // Swagger UI — must be public or it returns 403
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+                        // Everything else requires JWT
                         .anyRequest().authenticated())
                 // Run our JWT filter before Spring's default auth filter
                 .addFilterBefore(jwtAuthFilter,
